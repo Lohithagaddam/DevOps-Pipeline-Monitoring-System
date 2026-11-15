@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Pipeline Success Indicator</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f1f5f9;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white;
+            padding: 30px 15px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #dbeafe;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+
+        .led {
+            width: 125px;
+            height: 125px;
+            border-radius: 50%;
+            margin: 25px auto;
+            background: #94a3b8;
+            border: 8px solid #e2e8f0;
+            transition: 0.3s;
+        }
+
+        .led.green {
+            background: #22c55e;
+            box-shadow: 0 0 35px #22c55e;
+        }
+
+        .led.red {
+            background: #ef4444;
+            box-shadow: 0 0 35px #ef4444;
+        }
+
+        #status {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        #message {
+            color: #64748b;
+            margin-bottom: 15px;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        button {
+            border: none;
+            padding: 14px 25px;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .success-btn {
+            background: #16a34a;
+        }
+
+        .failure-btn {
+            background: #dc2626;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+            margin-top: 25px;
+        }
+
+        .detail-box {
+            background: #eff6ff;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .detail-box h3 {
+            color: #1e40af;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .detail-box p {
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+        }
+
+        @media(max-width: 600px) {
+            header h1 {
+                font-size: 22px;
+            }
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>DevOps Pipeline Success Indicator</h1>
+    <p>AWS-Based Build Monitoring System</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h2>Pipeline Status Monitor</h2>
+
+        <div class="led" id="led"></div>
+
+        <div id="status">WAITING</div>
+
+        <p id="message">
+            Waiting for build result...
+        </p>
+
+        <div class="buttons">
+
+            <button type="button"
+                class="success-btn"
+                id="successButton">
+                Build Successful
+            </button>
+
+            <button type="button"
+                class="failure-btn"
+                id="failureButton">
+                Build Failed
+            </button>
+
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Build Information</h2>
+
+        <div class="details">
+
+            <div class="detail-box">
+                <h3>Project Name</h3>
+                <p>DevOps Indicator</p>
+            </div>
+
+            <div class="detail-box">
+                <h3>Cloud Platform</h3>
+                <p>Amazon Web Services</p>
+            </div>
+
+            <div class="detail-box">
+                <h3>Last Build Status</h3>
+                <p id="buildStatus">Not Started</p>
+            </div>
+
+            <div class="detail-box">
+                <h3>Last Updated</h3>
+                <p id="lastUpdated">Not Available</p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    DevOps Pipeline Success Indicator | Powered by AWS Lambda
+</footer>
+
+<script>
+
+const LAMBDA_URL =
+"https://7mbj4k6l32t6e5sdqbtuwumliy0tkrhi.lambda-url.us-east-1.on.aws/";
+
+// Manual dashboard buttons
+document.getElementById("successButton").addEventListener("click", function() {
+    runBuild("SUCCESS");
+});
+
+document.getElementById("failureButton").addEventListener("click", function() {
+    runBuild("FAILED");
+});
+
+async function runBuild(buildType) {
+
+    const buttons = document.querySelectorAll("button");
+
+    buttons.forEach(button => button.disabled = true);
+
+    const led = document.getElementById("led");
+    const status = document.getElementById("status");
+    const message = document.getElementById("message");
+
+    status.textContent = "PROCESSING...";
+    message.textContent = "Connecting to AWS Lambda...";
+    led.className = "led";
+
+    try {
+
+        const response = await fetch(LAMBDA_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                status: buildType
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error("HTTP Error: " + response.status);
+        }
+
+        const result = await response.json();
+
+        let data = result;
+
+        if (typeof result.body === "string") {
+            data = JSON.parse(result.body);
+        } else if (
+            result.body &&
+            typeof result.body === "object"
+        ) {
+            data = result.body;
+        }
+
+        if (data.led_color === "GREEN") {
+
+            led.className = "led green";
+            status.textContent = "BUILD SUCCESSFUL";
+            message.textContent = data.message;
+
+        } else if (data.led_color === "RED") {
+
+            led.className = "led red";
+            status.textContent = "BUILD FAILED";
+            message.textContent = data.message;
+
+        } else {
+            throw new Error("Unexpected response from Lambda");
+        }
+
+        document.getElementById("buildStatus").textContent =
+            data.build_status;
+
+        document.getElementById("lastUpdated").textContent =
+            new Date().toLocaleString();
+
+    } catch (error) {
+
+        status.textContent = "CONNECTION ERROR";
+        message.textContent = error.message;
+
+        console.error("AWS Lambda Error:", error);
+
+    } finally {
+
+        buttons.forEach(button => button.disabled = false);
+
+    }
+}
+
+// Automatically read the actual build status from Python's URL
+const urlParams = new URLSearchParams(window.location.search);
+const buildStatus = urlParams.get("status");
+
+if (buildStatus === "SUCCESS" || buildStatus === "FAILED") {
+    runBuild(buildStatus);
+}
+
+</script>
+
+</body>
+</html>
